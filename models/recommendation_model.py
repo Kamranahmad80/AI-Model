@@ -2,9 +2,9 @@
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 
-def create_ranking_model(input_dim):
+def create_ranking_model(input_dim: int):
     """
-    Build a simple feed-forward neural network to rank job relevance.
+    Build a feed-forward neural network for ranking job relevance.
     input_dim: Dimension of the concatenated feature vector (user embedding, job embedding, and absolute difference).
     """
     model = Sequential([
@@ -20,6 +20,5 @@ def create_ranking_model(input_dim):
     return model
 
 if __name__ == "__main__":
-    # Example: suppose our concatenated vector is of length 3 * 768 (for two BERT embeddings and their absolute difference)
-    dummy_input_dim = 768 * 3
+    dummy_input_dim = 768 * 3  # Example for two BERT embeddings plus their absolute difference
     model = create_ranking_model(dummy_input_dim)

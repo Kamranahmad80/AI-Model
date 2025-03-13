@@ -8,22 +8,18 @@ import torch
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 model = BertModel.from_pretrained('bert-base-uncased', use_safetensors=False)
 
-def get_bert_embedding(text):
+def get_bert_embedding(text: str):
     """
-    Given a text string, return its BERT embedding.
-    We use mean pooling over token embeddings.
+    Given a text string, return its BERT embedding using mean pooling.
     """
     inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512, padding=True)
     with torch.no_grad():
         outputs = model(**inputs)
-    # Average the token embeddings to form a single vector representation
+    # Mean pooling over the token embeddings
     embedding = outputs.last_hidden_state.mean(dim=1).squeeze().numpy()
     return embedding
 
 if __name__ == "__main__":
-    # Example usage
-    sample_text = "Software engineer with experience in machine learning and data science."
+    sample_text = "software engineer with experience in machine learning and data science"
     emb = get_bert_embedding(sample_text)
     print("Embedding shape:", emb.shape)
-
-
