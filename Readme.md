@@ -1,103 +1,126 @@
-# AI-Based Job Recommendation System
+# OnJob AI Model - Advanced Job Recommendation System
 
 ## Overview
-This project is an AI-powered job recommendation system that matches users with relevant job listings based on their skills. The system uses NLP techniques to preprocess job descriptions and user profiles, and a machine learning model to provide job recommendations.
+This AI model powers the OnJob platform with advanced job recommendation capabilities. It analyzes user resumes and job listings to deliver personalized job recommendations based on skills, experience, and other relevant factors. The system combines machine learning, natural language processing, and rule-based matching to ensure high-quality matches even with limited data.
 
 ## Features
-- User profile and job listing preprocessing
-- AI-based job recommendation using NLP and ML techniques
-- Web interface for users to input skills and get job recommendations
-- Data storage and management with CSV files
+- **AI-powered job matching**: Uses TensorFlow to learn patterns between user skills and job requirements
+- **Skill extraction and analysis**: Identifies relevant skills from both resumes and job listings
+- **Fallback mechanisms**: Ensures recommendations are provided even in edge cases
+- **MongoDB integration**: Connects directly to the same database used by the main application
+- **RESTful API**: Provides easy integration with the Node.js backend
+- **Real-time recommendations**: Processes and returns results within seconds
 
 ## Tech Stack
-- **Frontend:** React.js (or preferred framework)
-- **Backend:** Flask / FastAPI (Python-based API for recommendations)
-- **AI Model:** Scikit-learn, Transformers (BERT), NLTK, Pandas
-- **Database:** CSV / SQLite (for storing jobs and user profiles)
+- **Framework**: FastAPI (Python-based high-performance API)
+- **AI/ML**: TensorFlow, scikit-learn, NLTK
+- **Database**: MongoDB (shared with main application)
+- **Text Processing**: TF-IDF Vectorization, Skill Extraction
+- **Deployment**: Docker-ready for easy deployment
 
 ---
 
-## Installation
+## Getting Started
+
 ### Prerequisites
-Ensure you have Python 3.9+ installed. Install the required dependencies using:
+Ensure you have Python 3.9+ installed along with the required dependencies:
 
 ```sh
 pip install -r requirements.txt
 ```
 
-### File Structure
+### Environment Setup
+Configure your environment variables in the `.env` file:
 ```
-project_root/
-│── data/
-│   ├── users.csv            # User profiles with skills
-│   ├── job_skills.csv       # Job listings with descriptions
-│── scripts/
-│   ├── preprocess.py        # Cleans and preprocesses job and user data
-│   ├── train_model.py       # Trains the AI recommendation model
-│   ├── recommend.py         # Runs the recommendation process
-│── api/
-│   ├── app.py               # Flask/FastAPI backend
-│── frontend/
-│   ├── (React app files)    # Web interface for users
+# MongoDB Connection
+MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+
+# API Security
+API_KEY=your_api_key  # Same key used in Node.js backend
+
+# App Settings
+PORT=8000
+ENV=development
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+## Quick Start
+
+Use the provided initialization script to start the recommendation system:
+
+```sh
+python initialize_and_start.py
+```
+
+This script will:
+1. Verify database connection
+2. Create and train the AI model if needed
+3. Start the FastAPI server
+
+## API Endpoints
+
+### `GET /`
+Health check endpoint to verify the API is running.
+
+### `POST /api/analyze-resume`
+Analyzes a resume and extracts skills, experience, and education.
+
+### `POST /api/recommend-jobs`
+Provides job recommendations based on user profile and resume data.
+
+### `POST /api/recommendation-feedback`
+Collects user feedback on recommendations for future model improvement.
+
+## How the AI Model Works
+
+1. **Data Collection**: Connects to MongoDB to retrieve job listings and user profiles
+2. **Feature Extraction**: 
+   - Converts job descriptions to TF-IDF vectors
+   - Creates skill match vectors between user skills and job requirements
+   - Extracts numeric features like salary and experience years
+3. **Model Training**: Trains a neural network to predict job-candidate matches
+4. **Scoring**: Ranks jobs based on match scores and similarity metrics
+5. **Recommendation**: Returns a personalized list of jobs with match explanations
+
+## Resilient Design
+
+The system includes multiple fallback mechanisms:
+- If the ML model fails, it uses a rule-based matching algorithm
+- If skill extraction fails, it adds default skills to ensure recommendations
+- If no matches are found with strict criteria, it loosens requirements
+
+## Integration with Node.js Backend
+
+The Node.js backend communicates with this AI model through a REST API. The backend sends user profile data and receives ranked job recommendations. This separation of concerns allows the AI model to be developed and scaled independently.
+
+---
+
+## Directory Structure
+```
+AI-Model/
+│── app.py                   # FastAPI application entry point
+│── recommendation_model.py   # ML model implementation
+│── initialize_and_start.py   # Initialization and startup script
+│
+│── database/
+│   └── db_connector.py      # MongoDB connection and data access
+│
 │── models/
-│   ├── job_recommender.pkl  # Trained ML model
-│── requirements.txt         # Dependencies
-│── README.md                # Project documentation
+│   ├── __init__.py
+│   ├── bert_embedding.py    # Text embedding utilities
+│   ├── recommendation_model.py  # Core ML model architecture
+│   └── job_recommender_model.keras  # Trained model (generated)
+│
+│── services/
+│   ├── job_matcher.py       # Job matching algorithms
+│   ├── job_matcher_helper.py  # Helper utilities for matching
+│   └── resume_parser.py     # Resume text extraction and analysis
+│
+│── requirements.txt         # Python dependencies
+└── .env                     # Environment configuration
 ```
-
-## Usage
-### 1. Preprocess the Data
-Before training the model, clean and preprocess the job listings and user data:
-
-```sh
-python scripts/preprocess.py
-```
-
-### 2. Train the Model
-Train the recommendation model on the cleaned data:
-
-```sh
-python scripts/train_model.py
-```
-
-### 3. Run the Recommendation System
-Once trained, use the model to generate job recommendations:
-
-```sh
-python scripts/recommend.py
-```
-
-### 4. Run the API Server
-Start the backend server to allow the frontend to access recommendations:
-
-```sh
-python api/app.py
-```
-
-### 5. Start the Frontend
-Navigate to the frontend folder and start the React app:
-
-```sh
-cd frontend
-npm install
-npm start
-```
-
----
-
-## How It Works
-1. **Preprocessing:** Cleans job descriptions and user profiles by removing stopwords, punctuation, and standardizing text.
-2. **Feature Extraction:** Uses NLP techniques (TF-IDF, BERT embeddings) to convert text data into numerical format.
-3. **Model Training:** Trains a machine learning model (Logistic Regression / Neural Network) to match users with job listings.
-4. **Recommendation:** When a user inputs their skills, the system compares them with job descriptions and ranks relevant jobs.
-
----
-
-## Contributing
-Feel free to submit pull requests or open issues for improvements.
 
 ---
 
 ## License
-MIT License. Use freely with attribution.
-
+Proprietary - OnJob © 2025

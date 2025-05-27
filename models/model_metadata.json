@@ -1,0 +1,1 @@
+{"input_dim": 133, "feature_count": {"tfidf": 71, "skills": 60, "numeric": 2}, "job_count": 19, "training_samples": 57}
