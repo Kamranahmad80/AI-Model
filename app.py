@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from services.resume_parser import ResumeParser
 from services.job_matcher import JobMatcher
+from services.huggingface_connector import HuggingFaceConnector
 from database.db_connector import DatabaseConnector
 import uvicorn
 
@@ -134,30 +135,45 @@ resume_parser = ResumeParser()
 job_matcher = JobMatcher()
 db = DatabaseConnector()
 
-# Import and initialize our new recommendation model
-from recommendation_model import JobRecommender
-
-# Initialize the job recommender
+# Initialize services
 try:
-    recommender = JobRecommender()
+    # Initialize MongoDB connector
+    db = DatabaseConnector()
+    logger.info("Connected to MongoDB")
     
-    # Check if model exists, if not, train it
-    model_path = Path('models/job_recommender_model.keras')
-    if not model_path.exists():
-        logger.info("Model not found, creating and training a new model")
-        success = recommender.create_and_train_model()
-        if success:
-            logger.info("Successfully created and trained a new recommendation model")
-        else:
-            logger.error("Failed to create recommendation model")
-    else:
-        logger.info("Using existing recommendation model")
+    # Initialize resume parser
+    resume_parser = ResumeParser()
+    logger.info("Initialized resume parser")
     
-    # We'll use recommender.model instead of model in the rest of the code
-    model = None  # Not used anymore
+    # Initialize job matcher
+    job_matcher = JobMatcher()
+    logger.info("Initialized job matcher")
+    
+    # Initialize the recommendation model
+    try:
+        # Try to load local recommendation model first
+        try:
+            from recommender.model import RecommendationModel
+            recommender = RecommendationModel()
+            logger.info("Initialized local AI recommendation model")
+            use_huggingface = False
+        except Exception as e:
+            logger.warning(f"Local model not available: {e}. Will use HuggingFace API instead.")
+            # Initialize HuggingFace connector as fallback
+            huggingface_connector = HuggingFaceConnector()
+            logger.info("Initialized HuggingFace connector for model inference")
+            use_huggingface = True
+            recommender = None
+        
+        # We'll use recommender.model instead of model in the rest of the code
+        model = None  # Not used anymore
+    except Exception as e:
+        logger.error(f"Error initializing recommendation models: {e}")
+        recommender = None
+        use_huggingface = False
 except Exception as e:
-    logger.error(f"Error initializing recommendation model: {e}")
-    recommender = None
+    logger.error(f"Error initializing core services: {e}")
+    raise
 
 @app.get("/")
 async def root():
@@ -228,37 +244,56 @@ async def recommend_jobs(request: RecommendationRequest):
         
         # Get matching jobs using our AI recommendation model
         try:
-            # Always use the AI recommendation system
-            if not recommender:
-                logger.warning("AI recommendation model not initialized, using rule-based matching")
-                recommendations = job_matcher.get_recommendations(
-                    None,
-                    request.resume_data.dict(),
-                    user_profile
-                )
-            else:
-                # Ensure resume data has at least some skills
-                resume_data_dict = request.resume_data.dict()
+            # Prepare resume data dictionary
+            resume_data_dict = request.resume_data.dict()
+            
+            # Make sure skills exist and are a list
+            if 'skills' not in resume_data_dict or not resume_data_dict['skills']:
+                resume_data_dict['skills'] = ["python", "javascript", "web development"]  # Default skills
+                logger.warning(f"No skills found in resume data, adding default skills")
+            
+            # Make sure experience exists
+            if 'experience' not in resume_data_dict or not resume_data_dict['experience']:
+                resume_data_dict['experience'] = []
+            
+            # Make sure education exists
+            if 'education' not in resume_data_dict or not resume_data_dict['education']:
+                resume_data_dict['education'] = []
                 
-                # Make sure skills exist and are a list
-                if 'skills' not in resume_data_dict or not resume_data_dict['skills']:
-                    resume_data_dict['skills'] = ["python", "javascript", "web development"]  # Default skills
-                    logger.warning(f"No skills found in resume data, adding default skills")
-                
-                # Make sure experience exists
-                if 'experience' not in resume_data_dict or not resume_data_dict['experience']:
-                    resume_data_dict['experience'] = []
-                
-                # Make sure education exists
-                if 'education' not in resume_data_dict or not resume_data_dict['education']:
-                    resume_data_dict['education'] = []
-                
-                # Get recommendations from AI model
+            # Decision tree for model selection:
+            # 1. Try local model if available
+            # 2. Try Hugging Face if available and local model isn't
+            # 3. Fall back to rule-based matching as last resort
+            
+            if recommender:  # Local model is available
+                logger.info("Using local AI model for recommendations")
                 recommendations = recommender.get_recommendations(
                     resume_data_dict,
                     user_profile
                 )
-                logger.info(f"Generated {len(recommendations)} recommendations with the AI model")
+                logger.info(f"Generated {len(recommendations)} recommendations with local AI model")
+                
+            elif 'use_huggingface' in globals() and use_huggingface and 'huggingface_connector' in globals():  # Use Hugging Face
+                logger.info("Using Hugging Face API for recommendations")
+                # Get jobs from database to send to Hugging Face
+                jobs_data = await db.get_jobs(limit=100)  # Limit to 100 jobs for API efficiency
+                
+                # Call Hugging Face API
+                recommendations = huggingface_connector.get_recommendations(
+                    resume_data_dict,
+                    jobs_data,
+                    user_profile
+                )
+                logger.info(f"Generated {len(recommendations)} recommendations with Hugging Face API")
+                
+            else:  # No AI models available
+                logger.warning("No AI recommendation models available, using rule-based matching")
+                recommendations = job_matcher.get_recommendations(
+                    None,
+                    resume_data_dict,
+                    user_profile
+                )
+                logger.info(f"Generated {len(recommendations)} recommendations with rule-based matching")
             
             # If no recommendations, use rule-based matching as fallback
             if not recommendations or len(recommendations) == 0:

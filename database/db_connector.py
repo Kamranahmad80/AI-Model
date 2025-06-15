@@ -328,6 +328,75 @@ class DatabaseConnector:
         
         return formatted_job
     
+    def get_all_jobs(self):
+        """Get all jobs from the database"""
+        if not self.jobs:
+            logger.error("MongoDB connection not available")
+            return []
+            
+        try:
+            logger.info("Retrieving all jobs from database")
+            
+            # Get jobs from database
+            cursor = self.jobs.find({})
+            
+            # Process documents
+            jobs = []
+            for job in cursor:
+                try:
+                    # Format job document for API response
+                    formatted_job = self._format_job_document(job)
+                    jobs.append(formatted_job)
+                except Exception as e:
+                    # If there's an error formatting a specific job, log it but continue
+                    logger.warning(f"Error formatting job document: {e}")
+                    continue
+            
+            logger.info(f"Retrieved {len(jobs)} jobs from database")
+            return jobs
+        except Exception as e:
+            logger.error(f"Error retrieving jobs: {e}")
+            return []
+            
+    async def get_jobs(self, limit=100, skip=0, filters=None):
+        """Get jobs with pagination and filtering support - for Hugging Face API integration"""
+        if not self.jobs:
+            logger.error("MongoDB connection not available")
+            return []
+            
+        try:
+            logger.info(f"Retrieving jobs from database (limit={limit}, skip={skip})")
+            
+            # Prepare query filters
+            query = {}
+            if filters:
+                # Apply any filters (e.g., category, location, etc.)
+                if 'category' in filters and filters['category']:
+                    query['Category'] = filters['category']
+                if 'location' in filters and filters['location']:
+                    query['Location'] = {'$regex': filters['location'], '$options': 'i'}
+            
+            # Get jobs from database with pagination
+            cursor = self.jobs.find(query).skip(skip).limit(limit)
+            
+            # Process documents
+            jobs = []
+            for job in cursor:
+                try:
+                    # Format job document for API response
+                    formatted_job = self._format_job_document(job)
+                    jobs.append(formatted_job)
+                except Exception as e:
+                    # If there's an error formatting a specific job, log it but continue
+                    logger.warning(f"Error formatting job document: {e}")
+                    continue
+            
+            logger.info(f"Retrieved {len(jobs)} jobs from database")
+            return jobs
+        except Exception as e:
+            logger.error(f"Error retrieving jobs: {e}")
+            return []
+    
     def store_recommendation_feedback(self, user_id: str, job_id: str, rating: int, 
     timestamp: datetime = None) -> bool:
         """Store user feedback on job recommendations"""
